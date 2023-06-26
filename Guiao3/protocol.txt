@@ -1,0 +1,27 @@
+Registar novo socket ( com serializer ):
+    {"method": "ser_register", "serializer": "JSON"}
+    {"method": "ser_register", "serializer": "XML"}
+    {"method": "ser_register", "serializer": "PICKLE"}
+
+Subscrever um topico:
+    {"method": "subscribe", "topic": "topic1"}
+
+Publicar num topico:
+    {"method": "publish", "topic": "topic1", "message": "Hello World"}
+    {"method": "publish", "topic": msg["topic"], "message": msg["value"]}
+
+Publicar para subtopico:
+    {"method": "publish", "topic": "topic1/subtopic1", "message": "Hello World"}
+
+Enviar lista dos topicos:
+    {"method": "list", "topics": topics}
+
+Enviar ultima mensagem de um tópico:
+    {"method": "last_message", "topic": topic , "message": self.topics_lastmsg[topic]}
+
+Unsubscribe de um topico:
+    {"method": "unsubscribe", "topic": "topic1"}
+
+List dos topicos:
+    {"method": "list"}
+

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Advanced Sound Systems</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="./assets/bootstrap-4.5.3-dist/css/bootstrap.min.css"
+    />
+    <script src="./assets/jquery-3.7.0.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>  popper is not being used in this moment-->
+    <script src="./assets/bootstrap-4.5.3-dist/js/bootstrap.min.js"></script>
+    <style>
+      html,
+      body {
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 35px;
+      }
+
+      button.btn {
+        margin-bottom: 15px;
+        margin-right: 37px;
+      }
+
+      input {
+        margin-bottom: 15px;
+      }
+
+      .btn-group {
+        display: flex;
+        gap: 9px;
+      }
+
+      .btn-group .btn {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container mt-5">
+      <h1 style="text-align: center">Advanced Sound Systems</h1>
+      <p style="text-align: center; margin-bottom: 50px">
+        Click on the buttons below to test the endpoints:
+      </p>
+      <div class="row mt-4" style="margin-bottom: 60px">
+        <div class="col-md-4">
+          <form id="music-form" enctype="multipart/form-data">
+            <label
+              for="music_input"
+              class="custom-file-upload btn btn-primary"
+              style="margin-bottom: 15px"
+            >
+              Choose a Music
+            </label>
+            <br />
+            <!-- Add a line break -->
+            <input
+              id="music_input"
+              name="music_input"
+              type="file"
+              onchange="handleMusicSelection(event)"
+              style="display: none"
+            />
+            <button type="button" class="btn btn-dark" onclick="submitMusic()">
+              Submit
+            </button>
+          </form>
+        </div>
+        <div class="col-sm-4">
+          <button class="btn btn-primary" onclick="getMusic()">
+            GET /music
+          </button>
+        </div>
+        <div class="col-sm-4">
+          <input
+            type="text"
+            id="music_id"
+            name="music_id"
+            placeholder="Enter music ID here"
+            style="margin-bottom: 15px"
+          />
+          <form id="json_id_form" enctype="multipart/form-data">
+            <label for="json_input" class="custom-file-upload btn btn-primary">
+              Choose JSON Identifier File
+            </label>
+            <input
+              id="json_input"
+              name="json_input"
+              type="file"
+              onchange="handleMusicSelection(event)"
+              style="display: none"
+            />
+          
+            <!-- <label for="json_input" class="custom-file-upload btn btn-dark">
+              Choose JSON Identifier File
+            </label>
+            <input
+              id="json_input"
+              name="json_input"
+              type="file"
+              onchange="handleMusicSelection(event)"
+              style="display: none"
+            /> -->
+            <!--
+            <div
+              class="btn-group d-flex"
+              role="group"
+              aria-label="Basic checkbox toggle button group"
+              style="margin-top: 5px; margin-bottom: 15px"
+            >
+              <input
+                type="checkbox"
+                class="btn-check"
+                id="Vocals"
+                autocomplete="off"
+              />
+              <label for="Vocals">Vocals</label>
+
+              <input
+                type="checkbox"
+                class="btn-check"
+                id="Drums"
+                autocomplete="off"
+              />
+              <label for="Drums">Drums</label>
+
+              <input
+                type="checkbox"
+                class="btn-check"
+                id="Bass"
+                autocomplete="off"
+              />
+              <label for="Bass">Bass</label>
+              <input
+                type="checkbox"
+                class="btn-check"
+                id="Other"
+                autocomplete="off"
+              />
+              <label for="Other">Other</label>
+            </div>
+            -->
+            <button
+              type="button"
+              class="btn btn-success"
+              onclick="postMusicId()"
+            >
+              POST /music/{music_id}
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="row mt-4">
+        <div class="col-sm-4">
+          <input
+            type="text"
+            id="music_id_2"
+            name="music_id_2"
+            placeholder="Enter music ID here"
+          />
+          <button class="btn btn-primary" onclick="getMusicId()">
+            GET /music/{music_id}
+          </button>
+        </div>
+        <div class="col-sm-4">
+          <button class="btn btn-primary" onclick="getJob()">GET /job</button>
+        </div>
+        <div class="col-sm-4">
+          <input
+            type="text"
+            id="job_id"
+            name="job_id"
+            placeholder="Enter job ID here"
+          />
+          <button class="btn btn-primary" onclick="getJobId()">
+            GET /job/{job_id}
+          </button>
+        </div>
+      </div>
+      <div class="row mt-4">
+        <div class="col-sm-4">
+          <button class="btn btn-success" onclick="postReset()">
+            POST /reset
+          </button>
+        </div>
+      </div>
+      <pre id="link_download" style="display: none">Zé dos downloads</pre>
+    </div>
+    <script>
+      function handleMusicSelection(event) {
+        const file = event.target.files[0];
+        console.log(file);
+        // Do something with the selected file
+      }
+      function submitMusic() {
+        var form = document.getElementById("music-form");
+        var formData = new FormData(form);
+        /*
+        if (!formData.has("music-input")) {
+          alert("Please select a music file to upload.");
+          return;
+        }
+        */
+        var xhr = new XMLHttpRequest();
+        xhr.onerror = function () {
+          alert("Connection refused: the API is not online.");
+        };
+        xhr.open("POST", "http://127.0.0.1:8000/music");
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            var label = document.getElementById("link_download");
+            label.innerHTML = JSON.parse(xhr.responseText);
+            label.style.display = "block";
+          } else {
+            var label = document.getElementById("link_download");
+            response = JSON.parse(xhr.responseText);
+            label.innerHTML =
+              "Error " +
+              xhr.status +
+              " occurred when trying to upload your file." +
+              "\n" +
+              response.message;
+            label.style.display = "block";
+          }
+        };
+        xhr.send(formData);
+      }
+      function getMusic() {
+        var xhr = new XMLHttpRequest();
+        xhr.onerror = function () {
+          alert("Connection refused: the API is not online.");
+        };
+        xhr.open("GET", "http://127.0.0.1:8000/music");
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            var label = document.getElementById("link_download");
+            label.innerHTML = JSON.parse(xhr.responseText);
+            label.style.display = "block";
+          } else {
+            var label = document.getElementById("link_download");
+            response = JSON.parse(xhr.responseText);
+            label.innerHTML =
+              "Error " +
+              xhr.status +
+              " occurred when trying to upload your file." +
+              "\n" +
+              response.message;
+            label.style.display = "block";
+          }
+        };
+        xhr.send();
+      }
+      function postMusicId() {
+        music_id = parseInt(document.getElementById("music_id").value);
+        console.log(music_id);
+        
+        var form = document.getElementById("json_id_form");
+        var formData = new FormData(form);
+        console.log(formData)
+        /*
+        if (!formData.has("file-input")) {
+          alert("Please select a JSON file with the identifiers !!");
+          return;
+        }
+        */
+        if (music_id == "" || music_id == null || isNaN(music_id)) {
+          alert(
+            "Please enter a music ID. \nCheck GET /music for the list of available musics."
+          );
+          return;
+        }
+        var xhr = new XMLHttpRequest();
+        
+        xhr.onerror = function () {
+          alert("Connection refused: the API is not online.");
+        };
+        
+        xhr.open("POST", "http://127.0.0.1:8000/music/" + music_id);
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            var label = document.getElementById("link_download");
+            label.innerHTML = JSON.parse(xhr.responseText).message;
+            label.style.display = "block";
+          } else {
+            var label = document.getElementById("link_download");
+            response = JSON.parse(xhr.responseText);
+            label.innerHTML =
+              "Error " +
+              xhr.status +
+              " occurred when trying to upload your file." +
+              "\n" +
+              response.message;
+            label.style.display = "block";
+          }
+        };
+        xhr.send(formData);
+      }
+      function getMusicId() {
+        music_id = parseInt(document.getElementById("music_id_2").value);
+        console.log(music_id);
+        var xhr = new XMLHttpRequest();
+        xhr.onerror = function () {
+          alert("Connection refused: the API is not online.");
+        };
+        xhr.open("GET", "http://127.0.0.1:8000/music/" + music_id);
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            var label = document.getElementById("link_download");
+            console.log(JSON.parse(xhr.responseText));
+            var message = JSON.stringify(
+              JSON.parse(xhr.responseText).message,
+              null,
+              2
+            );
+            var regex = /(?:https?|ftp):\/\/[\S]+/gi;
+            var messageWithLinks = message.replace(regex, function (match) {
+              return '<a href="' + match + '">' + match + "</a>";
+            });
+
+            label.innerHTML = messageWithLinks;
+            label.style.display = "block";
+          } else {
+            var label = document.getElementById("link_download");
+            response = JSON.parse(xhr.responseText);
+            label.innerHTML =
+              " A Error " +
+              " occurred when trying to upload your file." +
+              "\n" +
+              response.message;
+            label.style.display = "block";
+          }
+        };
+        xhr.send();
+      }
+
+      function getJob() {
+        //alert("GET /job endpoint called.");
+        var xhr = new XMLHttpRequest();
+        xhr.onerror = function () {
+          alert("Connection refused: the API is not online.");
+        };
+        xhr.open("GET", "http://127.0.0.1:8000/job");
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            var label = document.getElementById("link_download");
+            label.innerHTML = JSON.parse(xhr.responseText).Jobs;
+            label.style.display = "block";
+          } else {
+            var label = document.getElementById("link_download");
+            response = JSON.parse(xhr.responseText).message;
+            label.innerHTML =
+              "Error " +
+              xhr.status +
+              " occurred when trying to upload your file." +
+              "\n" +
+              response.message;
+            label.style.display = "block";
+          }
+        };
+        xhr.send();
+      }
+
+      function getJobId() {
+        //alert("GET /job/{job_id} endpoint called.");
+        job_id = parseInt(document.getElementById("job_id").value);
+        console.log(job_id);
+        var xhr = new XMLHttpRequest();
+        xhr.onerror = function () {
+          alert("Connection refused: the API is not online.");
+        };
+        xhr.open("GET", "http://127.0.0.1:8000/job/" + job_id);
+        xhr.onload = function () {
+          if (xhr.status === 200) {
+            var label = document.getElementById("link_download");
+            message =  JSON.parse(xhr.responseText).message;
+            var regex = /(?:https?|ftp):\/\/[\S]+/gi;
+            var messageWithLinks = message.replace(regex, function (match) {
+              return '<a href="' + match + '">' + match + "</a>";
+            });
+            label.innerHTML = messageWithLinks;
+            label.style.display = "block";
+          } else {
+            var label = document.getElementById("link_download");
+            response = JSON.parse(xhr.responseText);
+            label.innerHTML =
+              " A Error " +
+              " occurred when trying to upload your file." +
+              "\n" +
+              response.message;
+            label.style.display = "block";
+          }
+        };
+        xhr.send();
+      }
+
+      function postReset() {
+        //alert("POST /reset endpoint called.");
+        var xhr = new XMLHttpRequest();
+        xhr.onerror = function () {
+          alert("Connection refused: the API is not online.");
+        };
+        xhr.open("POST", "http://127.0.0.1:8000/reset");
+        xhr.onload = function () {
+          var label = document.getElementById("link_download");
+            label.innerHTML = JSON.parse(xhr.responseText).message;
+            label.style.display = "block";
+        };
+        xhr.send();
+      }
+    </script>
+  </body>
+</html>
