@@ -1,0 +1,1 @@
+os saltos entre os nós são de 2^n -1
