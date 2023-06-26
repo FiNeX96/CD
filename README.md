@@ -12,4 +12,4 @@
 
 ### **Projeto final: 17.5**
 
-#### Guião 1 feito individualmente. <br> Restantes trabalhahos realizados por [@jnluis](https://github.com/jnluis) e [@RodrigoAguiar](https://github.com/FiNeX96)
+#### Guião 1 feito individualmente. <br> Restantes trabalhos realizados por [@jnluis](https://github.com/jnluis) e [@RodrigoAguiar](https://github.com/FiNeX96)
