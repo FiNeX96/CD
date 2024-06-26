@@ -1,4 +1,4 @@
- # # SO - Distributed Computing ( Computação Distribuida )
+ # CD - Distributed Computing ( Computação Distribuida )
 ### Ano Letivo: 2022/23
 ## Notas
 
