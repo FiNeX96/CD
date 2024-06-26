@@ -1,81 +1,81 @@
-"""CD Chat client program"""
 import logging
+import socket
 import sys
+import selectors
 import fcntl
 import os
-import selectors
-import socket
-
 from .protocol import CDProto, CDProtoBadFormat
 
 logging.basicConfig(filename=f"{sys.argv[0]}.log", level=logging.DEBUG, filemode="w")
 
-
 class Client:
-    """Chat Client process."""
-
     def __init__(self, name: str = "Foo"):
-        """Initializes chat client."""
         self.name = name
+        #initialize socket
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.m_selector = selectors.DefaultSelector()
+        #initialize selector
+        self.selector = selectors.DefaultSelector()
+        #initialize protocol
         self.protocol = CDProto
-        self.channel = ["default"] # tá no canal default, e depois vai ser atribuido o canal que o user escolher
-        print("Client starting ...")
-
-    def connect(self):
-        """Connect to chat server and setup stdin flags."""
-        self.socket.connect(('localhost', 11001)) # host e porta
-        self.m_selector.register(self.socket, selectors.EVENT_READ,self.read_from_server)
-
-        #Incializar o protocolo, em que se vai usar o RegisterMessage
-        registerProtocol = self.protocol.register(self.name)
-        self.protocol.send_msg(self.socket, registerProtocol) #Envia a mensagem para o servidor
-        print("Mandei a mensagem para o servidor")
-
-    def read_from_server(self, conn,mask):
-        """Reads data from server and prints it to stdout."""
-        MessageRc = self.protocol.recv_msg(self.socket)
-        if MessageRc:
-            logging.debug('received message no cliente: %s', MessageRc)
-            if MessageRc:
-                print("Mensagem recebida do servidor no cliente",MessageRc.message)
-            else:
-                print('closing', conn)
-                self.m_selector.unregister(conn)
-                conn.close()
-
-    def got_keyboard_data(self, stdin, mask):
-        """Callback for keyboard input."""
-        user_input = stdin.read().strip()       # lê a mensagem do user e retira o \n do fim
-        if user_input != "":
-            command= user_input.split()[0].strip()  
-            print("Comando",command)
+        #initialize channel list, by default everyone is in default_channel
+        self.channel = ["default_channel"]
+        
+        
+    def process_keyboard_input(self, stdin, mask):
+        try:
+            message = sys.stdin.readline().rstrip("\n")
+            if not message: # empty message, dont allow enter spam, it crashes the server
+                return
+            command, *args = message.split() # split message into command (1st entry of list) and arguments ( the other entries )
             if command == "/join":
-                self.channel.append(user_input.split()[1])
-                join_msg = self.protocol.join(self.channel[-1])
+                channel = args[0]
+                # add the channel to the list of channels the client is in
+                self.channel.append(channel)
+                # send join message to server
+                join_msg = self.protocol.join(channel)
                 self.protocol.send_msg(self.socket, join_msg)
-            else: #TextMessage
-                if self.channel:
-                    std_msg = self.protocol.message(user_input, self.channel[-1])
-                    self.protocol.send_msg(self.socket, std_msg)
-                else:
-                    std_msg = self.protocol.message(user_input)
-                    self.protocol.send_msg(self.socket, std_msg)
-
-    def loop(self):
-    # set sys.stdin non-blocking
+                print(f"Joined {channel} channel sucessfully")
+            elif command == "exit":
+                print(f"Client {self.name} disconnecting from server")
+                self.socket.close()
+                self.selector.unregister(self.socket)
+                exit()
+            else:
+                # send normal message to server
+                text_msg = self.protocol.message(message, self.channel[-1])
+                self.protocol.send_msg(self.socket, text_msg)
+        except Exception as e:
+            print(f"Error processing message given: {e}") 
+       
+    def process_server_message(self, conn, mask):
+        # function to handle messages sent from server and print them to the terminal
+        msg = self.protocol.recv_msg(self.socket)
+        logging.debug(f"Received message: {msg}")
+        
+        message_type = msg.msg_type
+        
+        if message_type == "message":
+            print(msg.message)
+    
+    def connect(self):
+        # connect to the server
+        self.socket.connect(("localhost", 9876))
+        print("Successfully connected to server")
+        # send register message
+        register_message = self.protocol.register(self.name) 
+        self.protocol.send_msg(self.socket, register_message)
+        # set all the stdin flags to non blocking
+        self.selector.register(self.socket, selectors.EVENT_READ, self.process_server_message)
         orig_fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
         fcntl.fcntl(sys.stdin, fcntl.F_SETFL, orig_fl | os.O_NONBLOCK)
+        # register stdin to selector so it triggers the function when there is input in the terminal
+        self.selector.register(sys.stdin, selectors.EVENT_READ, self.process_keyboard_input)
 
-        # register event
-        self.m_selector.register(sys.stdin, selectors.EVENT_READ, self.got_keyboard_data)
-        
+    def loop(self):
         while True:
-            sys.stdout.write('Type something and hit enter: \n')
+            sys.stdout.write('')
             sys.stdout.flush()
-            for k, mask in self.m_selector.select():
+            for k, mask in self.selector.select():
                 callback = k.data
-                callback(k.fileobj, mask)
-
-#recebe do teclado e da rede
+                callback(self, k.fileobj)    
+        

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Protocol for chat server - Computação Distribuida Assignment 1."""
 import json
 from datetime import datetime
@@ -5,99 +6,131 @@ from socket import socket
 
 
 class Message:
+    
+    # fazer um to Json e um from Json
+
+    def __init__(self, msg_type: str):
+        self.msg_type = msg_type
+
+    def __str__(self) -> str:
+        return f"command:" "{self.msg_type}"
+
     """Message Type."""
 
-    def __init__(self, command):
-        self.command = command
     
-class JoinMessage(Message): # está a herdar de Message, é uma subclasse
-    """Message to join a chat channel."""
-    def __init__(self,comand, channel):
-        super().__init__(comand) # chama o construtor da classe mãe
+class JoinMessage(Message):
+
+    def __init__(self, msg_type: str, channel: str ):
+        super().__init__(msg_type)
         self.channel = channel
-    
-    def __str__(self): # é basicamente um toString() do Java
-        return f"{{\"command\": \"{self.command}\", \"channel\": \"{self.channel}\"}}"
+        self.msg_type = msg_type
+
+    def __str__(self) -> str:
+        return f'{{"command": "{self.msg_type}", "channel": "{self.channel}"}}'
+    """Message to join a chat channel."""
+
 
 class RegisterMessage(Message):
-    """Message to register username in the server."""
-    def __init__(self,comand, user):
-        super().__init__(comand) # chama o construtor da classe mãe
+
+    def __init__(self, msg_type: str, user : str ):
+        super().__init__("register")
+        self.msg_type = msg_type
         self.user = user
-    
-    def __str__(self):
-        return f"{{\"command\": \"{self.command}\", \"user\": \"{self.user}\"}}"
+        
+    def __str__(self) -> str:
+        return f'{{"command": "{self.msg_type}", "user": "{self.user}"}}'
+    """Message to register username in the server."""
+
     
 class TextMessage(Message):
-    """Message to chat with other clients."""
-    def __init__(self,comand, message, channel = "default"):
-        super().__init__(comand)
+    def __init__(self, msg_type: str, message: str, channel : str = "default_channel" ):
+        super().__init__(msg_type)
+        self.msg_type = msg_type
         self.message = message
-        self.channel = channel
         self.ts = int(datetime.now().timestamp())
+        self.channel = channel
+    
+    def __str__(self) -> str:
+        repr_dict = {"command": self.msg_type, "message": self.message, "ts": self.ts}
+        if self.channel != "default_channel":
+            repr_dict["channel"] = self.channel
+        return json.dumps(repr_dict)
 
-    def __str__(self):
-        if self.channel != "default":
-            return f"{{\"command\": \"{self.command}\", \"message\": \"{self.message}\", \"channel\": \"{self.channel}\", \"ts\": \"{self.ts}\"}}"
-        else:
-            return f"{{\"command\": \"{self.command}\", \"message\": \"{self.message}\", \"ts\": {self.ts}}}"
+    """Message to chat with other clients."""
 
-class CDProto: # é uma classe abstrata. Assim dá para fazer CDProto.register noutros casos
-    # Isto é um padrão de software chamado Factory Method
+
+class CDProto:
     """Computação Distribuida Protocol."""
 
     @classmethod
     def register(cls, username: str) -> RegisterMessage:
+
+        return RegisterMessage("register",username)
         """Creates a RegisterMessage object."""
-        return RegisterMessage("register", username)
 
     @classmethod
     def join(cls, channel: str) -> JoinMessage:
+
+        return JoinMessage("join",channel)
         """Creates a JoinMessage object."""
-        return JoinMessage("join", channel)
 
     @classmethod
-    def message(cls, message: str, channel: str = "default") -> TextMessage:
-        """Creates a TextMessage object."""
-        return TextMessage("message", message, channel)
+    def message(cls, message: str, channel: str = "default_channel" ) -> TextMessage:
+        return TextMessage("message", message,channel)
 
     @classmethod
     def send_msg(cls, connection: socket, msg: Message):
-        """Sends through a connection a Message object."""
-        data = bytes(msg.__str__(),encoding="utf-8") 
-        header = len(data)
-        header = header.to_bytes(2, "big") ## Por cusa da notação big-endian
+      
+        if (isinstance(msg, RegisterMessage)):
+            msg = json.dumps({"command": "register", "user": msg.user}).encode("utf-8")         
+        elif (isinstance(msg, JoinMessage)):
+            msg = json.dumps({"command": "join", "channel": msg.channel}).encode("utf-8")
+        elif (isinstance(msg, TextMessage)):
+            msg = json.dumps({"command": "message", "message": msg.message,"channel" : msg.channel, "ts": msg.ts}).encode("utf-8")
+            
+        msg_header = len(msg).to_bytes(2,byteorder='big') # first 2 bytes are the header
         
         try:
-            connection.sendall(header + data)
+            connection.sendall(msg_header + msg)
         except BrokenPipeError:
             return
         
+        """Sends through a connection a Message object."""
+
     @classmethod
     def recv_msg(cls, connection: socket) -> Message:
-        """Receives through a connection a Message object."""
-        header = int.from_bytes(connection.recv(2), "big") # Verificar se o header está bem ou não
-        if header == 0: return # O sor disse que não é para fazer recv quando a mensagem tem tamanho 0
+
         
-        rcv_message = connection.recv(header).decode("utf-8")
+        msg_length = int.from_bytes(connection.recv(2),"big") # first 2 bytes should be the header
+            
+        if msg_length == 0: # problems with clients disconnecting and sending length 0 messages for some reason
+            return 
         
-        if rcv_message:
+        message = connection.recv(msg_length).decode("utf-8") # the remaining bytes are the message
+        #print(msg_length,message.decode("UTF-8"))
+        message_dic = {}
+        if message :
             try:
-                rcv_message = json.loads(rcv_message)
+                message_dic = json.loads(message)
             except json.decoder.JSONDecodeError:
+                print ("message with bad format -> " , message)
                 raise CDProtoBadFormat
-        
-        if rcv_message["command"] == "register":
-            return CDProto.register(rcv_message["user"])
-        elif rcv_message["command"] == "join":
-            return CDProto.join(rcv_message["channel"])
-        elif rcv_message["command"] == "message":
-            if "channel" not in rcv_message.keys():
-                return CDProto.message(rcv_message["message"],"default")
+
+            
+        #print(message_dic)        
+        if message_dic["command"] == "register":
+            return CDProto.register(message_dic["user"])      
+        elif message_dic["command"] == "join":
+            return CDProto.join(message_dic["channel"])
+
+        elif message_dic["command"] == "message":
+            if "channel" not in message_dic.keys():
+                return CDProto.message(message_dic["message"],"default_channel") # if its the default channel, it will fill as none
             else:
-                return CDProto.message(rcv_message["message"],rcv_message["channel"])
-        else:
-            raise CDProtoBadFormat(rcv_message)
+                return CDProto.message(message_dic["message"],message_dic["channel"]) # if it has a channel 
+        
+        """Receives through a connection a Message object."""
+
 
 class CDProtoBadFormat(Exception):
     """Exception when source message is not CDProto."""
